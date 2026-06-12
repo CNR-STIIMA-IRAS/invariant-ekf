@@ -18,9 +18,10 @@ A ROS wrapper for the filter is available at [https://github.com/RossHartley/inv
 
 ## Setup
 ### Requirements
-* CMake 2.8.3 or later
+* CMake 3.16 or later
 * g++ 5.4.0 or later
 * [Eigen3 C++ Library](http://eigen.tuxfamily.org/index.php?title=Main_Page)
+* Boost 1.57 or later (optional; needed for examples and speed test binaries)
 
 ### Installation Using CMake
 ```
@@ -29,10 +30,34 @@ cd build
 cmake .. 
 make
 ``` 
+To build only the core library without Boost-dependent binaries:
+```
+cmake .. -DINEKF_BUILD_EXAMPLES=OFF -DINEKF_BUILD_SPEED_TESTS=OFF
+make
+```
+
+### Build Using CMake Presets
+The repository includes `CMakePresets.json` with common build profiles:
+```
+cmake --preset default-release
+cmake --build --preset default-release
+```
+Core-only (no Boost-dependent binaries):
+```
+cmake --preset core-only-release
+cmake --build --preset core-only-release
+```
+
+### Run CTest Speed Targets
+When speed targets are enabled, they are also registered with CTest:
+```
+ctest --preset speed-tests
+```
+
 invariant-ekf can be easily included in your cmake project by adding the following to your CMakeLists.txt:
 ```
-find_package(inekf) 
-include_directories(${inekf_INCLUDE_DIRS})
+find_package(inekf REQUIRED)
+target_link_libraries(your_target PRIVATE inekf::inekf)
 ```
 
 ## Examples

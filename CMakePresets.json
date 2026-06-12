@@ -1,0 +1,68 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 16,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "default-release",
+      "displayName": "Default Release",
+      "description": "Build library, examples, and speed targets with CTest enabled.",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build/preset-default-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "BUILD_TESTING": "ON",
+        "INEKF_BUILD_EXAMPLES": "ON",
+        "INEKF_BUILD_SPEED_TESTS": "ON"
+      }
+    },
+    {
+      "name": "core-only-release",
+      "displayName": "Core-only Release",
+      "description": "Build only the core inekf library (no Boost-dependent binaries).",
+      "inherits": "default-release",
+      "binaryDir": "${sourceDir}/build/preset-core-only-release",
+      "cacheVariables": {
+        "BUILD_TESTING": "OFF",
+        "INEKF_BUILD_EXAMPLES": "OFF",
+        "INEKF_BUILD_SPEED_TESTS": "OFF"
+      }
+    },
+    {
+      "name": "default-debug",
+      "displayName": "Default Debug",
+      "description": "Debug build with examples and speed targets.",
+      "inherits": "default-release",
+      "binaryDir": "${sourceDir}/build/preset-default-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "default-release",
+      "configurePreset": "default-release"
+    },
+    {
+      "name": "core-only-release",
+      "configurePreset": "core-only-release"
+    },
+    {
+      "name": "default-debug",
+      "configurePreset": "default-debug"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "speed-tests",
+      "configurePreset": "default-release",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ]
+}
