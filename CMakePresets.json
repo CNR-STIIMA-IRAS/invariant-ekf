@@ -16,7 +16,8 @@
         "CMAKE_BUILD_TYPE": "Release",
         "BUILD_TESTING": "ON",
         "INEKF_BUILD_EXAMPLES": "ON",
-        "INEKF_BUILD_SPEED_TESTS": "ON"
+        "INEKF_BUILD_SPEED_TESTS": "ON",
+        "EXPORT_COMPILE_COMMANDS": "ON"
       }
     },
     {
@@ -28,7 +29,9 @@
       "cacheVariables": {
         "BUILD_TESTING": "OFF",
         "INEKF_BUILD_EXAMPLES": "OFF",
-        "INEKF_BUILD_SPEED_TESTS": "OFF"
+        "INEKF_BUILD_SPEED_TESTS": "OFF",
+        "EXPORT_COMPILE_COMMANDS": "OFF"
+
       }
     },
     {
