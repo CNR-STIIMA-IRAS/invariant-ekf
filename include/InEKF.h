@@ -1,7 +1,9 @@
 /* ----------------------------------------------------------------------------
- * Copyright 2018, Ross Hartley
- * All Rights Reserved
- * See LICENSE for the license information
+ * SPDX-License-Identifier: BSD-3-Clause
+ * Copyright (c) 2018, Ross Hartley
+ * Copyright (c) 2026, Nicola Pedrocchi, CNR
+ * All rights reserved.
+ * See LICENSE for full BSD-3-Clause terms.
  * -------------------------------------------------------------------------- */
 
 /**

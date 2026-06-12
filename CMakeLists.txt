@@ -6,6 +6,7 @@ endif()
 
 project(inekf VERSION 1.0.0 LANGUAGES CXX)
 
+option(EXPORT_COMPILE_COMMANDS "Export compile commands" ON)
 option(USE_MUTEX "Use mutex in code" OFF)
 option(INEKF_BUILD_EXAMPLES "Build example binaries" ON)
 option(INEKF_BUILD_SPEED_TESTS "Build speed test binaries" ON)
@@ -17,6 +18,7 @@ message(STATUS "USE_MUTEX: ${USE_MUTEX}")
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ${EXPORT_COMPILE_COMMANDS})
 
 # Preserve the legacy output layout expected by existing scripts.
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
