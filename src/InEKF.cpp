@@ -54,8 +54,18 @@ InEKF::InEKF(RobotState state) : g_((Eigen::VectorXd(3) << 0,0,-9.81).finished()
 InEKF::InEKF(RobotState state, NoiseParams params) : g_((Eigen::VectorXd(3) << 0,0,-9.81).finished()), state_(state), noise_params_(params) {}
 
 // Return robot's current state
-RobotState InEKF::getState() { 
-    return state_; 
+RobotState InEKF::getState() const {
+    return state_;
+}
+
+// Reset the state and remove all augmented landmarks and contacts.
+void InEKF::clear() {
+    state_ = RobotState();
+    noise_params_ = NoiseParams();
+    prior_landmarks_.clear();
+    estimated_landmarks_.clear();
+    contacts_.clear();
+    estimated_contact_positions_.clear();
 }
 
 // Sets the robot's current state
@@ -219,8 +229,55 @@ void InEKF::Correct(const Observation& obs) {
     Eigen::MatrixXd IKH = Eigen::MatrixXd::Identity(state_.dimP(),state_.dimP()) - K*obs.H;
     Eigen::MatrixXd P_new = IKH * P * IKH.transpose() + K*obs.N*K.transpose(); // Joseph update form
 
-    state_.setP(P_new); 
-}   
+    state_.setP(P_new);
+}
+
+// Correct selected world-frame coordinates of an estimated contact point.
+void InEKF::CorrectContactPosition(const int id,
+                                   const Eigen::Vector3d& measured_contact_position,
+                                   const Eigen::Matrix3d& covariance,
+                                   const Eigen::Vector3d& indices) {
+    const auto estimated = estimated_contact_positions_.find(id);
+    if (estimated == estimated_contact_positions_.end()) {
+        return;
+    }
+
+    Eigen::MatrixXd projection(0, 3);
+    for (int i = 0; i < 3; ++i) {
+        if (indices(i) != 0.0) {
+            const auto row = projection.rows();
+            projection.conservativeResize(row + 1, 3);
+            projection.row(row).setZero();
+            projection(row, i) = 1.0;
+        }
+    }
+    if (projection.rows() == 0) {
+        return;
+    }
+
+    const int dim_theta = state_.dimTheta();
+    const int dim_p = state_.dimP();
+    const Eigen::Vector3d contact_position = state_.getVector(estimated->second);
+
+    Eigen::MatrixXd full_h = Eigen::MatrixXd::Zero(3, dim_p);
+    full_h.block<3,3>(0, 0) = -skew(contact_position);
+    full_h.block<3,3>(0, 3 * estimated->second - 6) = Eigen::Matrix3d::Identity();
+
+    const Eigen::MatrixXd h = projection * full_h;
+    const Eigen::MatrixXd n = projection * covariance * projection.transpose();
+    const Eigen::VectorXd z = projection * (measured_contact_position - contact_position);
+
+    const Eigen::MatrixXd p = state_.getP();
+    const Eigen::MatrixXd pht = p * h.transpose();
+    const Eigen::MatrixXd kalman_gain = pht * (h * pht + n).inverse();
+    const Eigen::VectorXd delta = kalman_gain * z;
+
+    state_.setX(Exp_SEK3(delta.head(delta.rows() - dim_theta)) * state_.getX());
+    state_.setTheta(state_.getTheta() + delta.tail(dim_theta));
+
+    const Eigen::MatrixXd ikh = Eigen::MatrixXd::Identity(dim_p, dim_p) - kalman_gain * h;
+    state_.setP(ikh * p * ikh.transpose() + kalman_gain * n * kalman_gain.transpose());
+}
 
 // Create Observation from vector of landmark measurements
 void InEKF::CorrectLandmarks(const vectorLandmarks& measured_landmarks) {

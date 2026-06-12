@@ -81,7 +81,7 @@ class InEKF {
         InEKF(RobotState state);
         InEKF(RobotState state, NoiseParams params);
 
-        RobotState getState();
+        RobotState getState() const;
         NoiseParams getNoiseParams();
         mapIntVector3d getPriorLandmarks();
         std::map<int,int> getEstimatedLandmarks();
@@ -92,10 +92,16 @@ class InEKF {
         void setPriorLandmarks(const mapIntVector3d& prior_landmarks);
         void setContacts(std::vector<std::pair<int,bool> > contacts);
 
+        void clear();
+
         void Propagate(const Eigen::Matrix<double,6,1>& m, double dt);
         void Correct(const Observation& obs);
         void CorrectLandmarks(const vectorLandmarks& measured_landmarks);
         void CorrectKinematics(const vectorKinematics& measured_kinematics);
+        void CorrectContactPosition(const int id,
+                                    const Eigen::Vector3d& measured_contact_position,
+                                    const Eigen::Matrix3d& covariance,
+                                    const Eigen::Vector3d& indices);
 
     private:
         RobotState state_;

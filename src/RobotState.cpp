@@ -108,13 +108,19 @@ const Eigen::Vector3d RobotState::getVelocity() {
 #endif
     return X_.block<3,1>(0,3); 
 }
-const Eigen::Vector3d RobotState::getPosition() { 
+const Eigen::Vector3d RobotState::getPosition() {
 #if INEKF_USE_MUTEX
     unique_lock<mutex> mlock(mutex_);
 #endif
-    return X_.block<3,1>(0,4); 
+    return X_.block<3,1>(0,4);
 }
-const Eigen::Vector3d RobotState::getGyroscopeBias() { 
+const Eigen::Vector3d RobotState::getVector(int index) {
+#if INEKF_USE_MUTEX
+    unique_lock<mutex> mlock(mutex_);
+#endif
+    return X_.block<3,1>(0,index);
+}
+const Eigen::Vector3d RobotState::getGyroscopeBias() {
 #if INEKF_USE_MUTEX
     unique_lock<mutex> mlock(mutex_);
 #endif

@@ -45,6 +45,7 @@ class RobotState {
         const Eigen::Matrix3d getRotation();
         const Eigen::Vector3d getVelocity();
         const Eigen::Vector3d getPosition();
+        const Eigen::Vector3d getVector(int index);
         const Eigen::Vector3d getGyroscopeBias();
         const Eigen::Vector3d getAccelerometerBias();
         const int dimX();
