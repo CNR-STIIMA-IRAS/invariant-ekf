@@ -15,6 +15,8 @@
 
 #include "InEKF.h"
 
+#include <array>
+
 namespace inekf {
 
 using namespace std;
@@ -45,13 +47,13 @@ ostream& operator<<(ostream& os, const Observation& o) {
 InEKF::InEKF() : g_((Eigen::VectorXd(3) << 0,0,-9.81).finished()){}
 
 // Constructor with noise params
-InEKF::InEKF(NoiseParams params) : g_((Eigen::VectorXd(3) << 0,0,-9.81).finished()), noise_params_(params) {}
+InEKF::InEKF(const NoiseParams& params) : g_((Eigen::VectorXd(3) << 0,0,-9.81).finished()), noise_params_(params) {}
 
 // Constructor with initial state
-InEKF::InEKF(RobotState state) : g_((Eigen::VectorXd(3) << 0,0,-9.81).finished()), state_(state) {}
+InEKF::InEKF(const RobotState& state) : g_((Eigen::VectorXd(3) << 0,0,-9.81).finished()), state_(state) {}
 
 // Constructor with initial state and noise params
-InEKF::InEKF(RobotState state, NoiseParams params) : g_((Eigen::VectorXd(3) << 0,0,-9.81).finished()), state_(state), noise_params_(params) {}
+InEKF::InEKF(const RobotState& state, const NoiseParams& params) : g_((Eigen::VectorXd(3) << 0,0,-9.81).finished()), state_(state), noise_params_(params) {}
 
 // Return robot's current state
 RobotState InEKF::getState() const {
@@ -69,7 +71,7 @@ void InEKF::clear() {
 }
 
 // Sets the robot's current state
-void InEKF::setState(RobotState state) { 
+void InEKF::setState(const RobotState& state) {
     state_ = state;
 }
 
@@ -79,7 +81,7 @@ NoiseParams InEKF::getNoiseParams() {
 }
 
 // Sets the filter's noise parameters
-void InEKF::setNoiseParams(NoiseParams params) { 
+void InEKF::setNoiseParams(const NoiseParams& params) {
     noise_params_ = params; 
 }
 
@@ -450,16 +452,23 @@ void InEKF::CorrectKinematics(const vectorKinematics& measured_kinematics) {
     Eigen::MatrixXd PI;
 
     Eigen::Matrix3d R = state_.getRotation();
-    vector<pair<int,int> > remove_contacts;
-    vectorKinematics new_contacts;
-    vector<int> used_contact_ids;
+    std::array<pair<int,int>, 64> remove_contacts;
+    std::array<const Kinematics*, 64> new_contacts;
+    std::size_t remove_contacts_count = 0;
+    std::size_t new_contacts_count = 0;
+    bool used_contact_ids[64] = {};
 
    for (vectorKinematicsIterator it=measured_kinematics.begin(); it!=measured_kinematics.end(); ++it) {
         // Detect and skip if an ID is not unique (this would cause singularity issues in InEKF::Correct)
-        if (find(used_contact_ids.begin(), used_contact_ids.end(), it->id) != used_contact_ids.end()) { 
+        if (it->id < 0 || it->id >= 64) {
+            cout << "Invalid contact ID detected! Skipping measurement.\n";
+            continue;
+        }
+        if (used_contact_ids[it->id]) {
             cout << "Duplicate contact ID detected! Skipping measurement.\n";
             continue; 
-        } else { used_contact_ids.push_back(it->id); }
+        }
+        used_contact_ids[it->id] = true;
 
         // Find contact indicator for the kinematics measurement
         map<int,bool>::iterator it_contact = contacts_.find(it->id);
@@ -472,10 +481,14 @@ void InEKF::CorrectKinematics(const vectorKinematics& measured_kinematics) {
 
         // If contact is not indicated and id is found in estimated_contacts_, then remove state
         if (!contact_indicated && found) {
-            remove_contacts.push_back(*it_estimated); // Add id to remove list
+            if (remove_contacts_count < remove_contacts.size()) {
+                remove_contacts[remove_contacts_count++] = *it_estimated; // Add id to remove list
+            }
         //  If contact is indicated and id is not found i n estimated_contacts_, then augment state
         } else if (contact_indicated && !found) {
-            new_contacts.push_back(*it); // Add to augment list
+            if (new_contacts_count < new_contacts.size()) {
+                new_contacts[new_contacts_count++] = &(*it); // Add to augment list
+            }
 
         // If contact is indicated and id is found in estimated_contacts_, then correct using kinematics
         } else if (contact_indicated && found) {
@@ -534,10 +547,11 @@ void InEKF::CorrectKinematics(const vectorKinematics& measured_kinematics) {
     }
 
     // Remove contacts from state
-    if (remove_contacts.size() > 0) {
+    if (remove_contacts_count > 0) {
         Eigen::MatrixXd X_rem = state_.getX(); 
         Eigen::MatrixXd P_rem = state_.getP();
-        for (vector<pair<int,int> >::iterator it=remove_contacts.begin(); it!=remove_contacts.end(); ++it) {
+        for (std::size_t contact_idx = 0; contact_idx < remove_contacts_count; ++contact_idx) {
+            pair<int,int>* it = &remove_contacts[contact_idx];
             // Remove from list of estimated contact positions
             estimated_contact_positions_.erase(it->first);
 
@@ -560,7 +574,8 @@ void InEKF::CorrectKinematics(const vectorKinematics& measured_kinematics) {
                     it2->second -= 1;
             }
             // We also need to update the indices of remove_contacts in the case where multiple contacts are being removed at once
-            for (vector<pair<int,int> >::iterator it2=it; it2!=remove_contacts.end(); ++it2) {
+            for (std::size_t remove_idx = contact_idx; remove_idx < remove_contacts_count; ++remove_idx) {
+                pair<int,int>* it2 = &remove_contacts[remove_idx];
                 if (it2->second > it->second) 
                     it2->second -= 1;
             }
@@ -573,11 +588,12 @@ void InEKF::CorrectKinematics(const vectorKinematics& measured_kinematics) {
 
 
     // Augment state with newly detected contacts
-    if (new_contacts.size() > 0) {
+    if (new_contacts_count > 0) {
         Eigen::MatrixXd X_aug = state_.getX(); 
         Eigen::MatrixXd P_aug = state_.getP();
         Eigen::Vector3d p = state_.getPosition();
-        for (vectorKinematicsIterator it=new_contacts.begin(); it!=new_contacts.end(); ++it) {
+        for (std::size_t contact_idx = 0; contact_idx < new_contacts_count; ++contact_idx) {
+            const Kinematics* it = new_contacts[contact_idx];
             // Initialize new landmark mean
             int startIndex = X_aug.rows();
             X_aug.conservativeResize(startIndex+1, startIndex+1);

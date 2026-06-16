@@ -77,9 +77,9 @@ class InEKF {
     public:
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
         InEKF();
-        InEKF(NoiseParams params);
-        InEKF(RobotState state);
-        InEKF(RobotState state, NoiseParams params);
+        explicit InEKF(const NoiseParams& params);
+        explicit InEKF(const RobotState& state);
+        InEKF(const RobotState& state, const NoiseParams& params);
 
         RobotState getState() const;
         NoiseParams getNoiseParams();
@@ -87,8 +87,8 @@ class InEKF {
         std::map<int,int> getEstimatedLandmarks();
         std::map<int,bool> getContacts();
         std::map<int,int> getEstimatedContactPositions();
-        void setState(RobotState state);
-        void setNoiseParams(NoiseParams params);
+        void setState(const RobotState& state);
+        void setNoiseParams(const NoiseParams& params);
         void setPriorLandmarks(const mapIntVector3d& prior_landmarks);
         void setContacts(std::vector<std::pair<int,bool> > contacts);
 
