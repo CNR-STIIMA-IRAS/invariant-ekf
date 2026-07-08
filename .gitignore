@@ -43,3 +43,6 @@ bin/
 build/
 build*/
 lib/
+
+.vscode/
+
