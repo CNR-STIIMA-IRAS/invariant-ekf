@@ -203,13 +203,14 @@ void InEKF::Propagate(const Eigen::Matrix<double,6,1>& m, double dt) {
     return;
 }
 
+
 // Correct State: Right-Invariant Observation
 void InEKF::Correct(const Observation& obs) {
     // Compute Kalman Gain
     Eigen::MatrixXd P = state_.getP();
     Eigen::MatrixXd PHT = P * obs.H.transpose();
     Eigen::MatrixXd S = obs.H * PHT + obs.N;
-    Eigen::MatrixXd K = PHT * S.inverse();
+    Eigen::MatrixXd K = PHT * S.completeOrthogonalDecomposition().pseudoInverse();
 
     // Copy X along the diagonals if more than one measurement
     Eigen::MatrixXd BigX;
@@ -218,6 +219,10 @@ void InEKF::Correct(const Observation& obs) {
     // Compute correction terms
     Eigen::MatrixXd Z = BigX*obs.Y - obs.b;
     Eigen::VectorXd delta = K*obs.PI*Z;
+    if (!K.allFinite() || !delta.allFinite()) {
+        std::cout << "Warning: InEKF::Correct received non-finite matrix (NaN/Inf). Skipping observation update.\n";
+        return;
+    }
     Eigen::MatrixXd dX = Exp_SEK3(delta.segment(0,delta.rows()-state_.dimTheta()));
     Eigen::VectorXd dTheta = delta.segment(delta.rows()-state_.dimTheta(), state_.dimTheta());
 
